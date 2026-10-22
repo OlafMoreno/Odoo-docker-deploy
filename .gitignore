@@ -1,0 +1,24 @@
+# Archivos de datos locales y persistencia
+data/
+
+# Archivos de entorno y credenciales
+.env
+*.env
+
+# Archivos de configuración de Odoo (si contienen contraseñas)
+config/*.conf
+
+# Logs
+*.log
+
+# Archivos de Python (para desarrollo en ./addons)
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Archivos del sistema operativo e IDEs
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

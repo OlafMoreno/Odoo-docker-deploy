@@ -1,0 +1,24 @@
+services:
+  web:
+    build: .
+    ports:
+      - "${PORT}:8069"
+    environment:
+      - HOST=${ODOO_HOST}
+      - USER=${ODOO_USER}
+      - PASSWORD=${ODOO_PASSWORD}
+    volumes:
+      - ./data/odoo:/var/lib/odoo
+      - ./config:/etc/odoo
+      - ./addons:/mnt/extra-addons
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - ./data/db:/var/lib/postgresql/data
