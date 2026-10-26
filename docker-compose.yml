@@ -11,6 +11,8 @@ services:
       - ./data/odoo:/var/lib/odoo
       - ./config:/etc/odoo
       - ./addons:/mnt/extra-addons
+    restart:
+      - always
     depends_on:
       - db
 
