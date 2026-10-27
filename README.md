@@ -4,10 +4,18 @@ Este repositorio prepara una instancia de Odoo 19 y PostgreSQL 15 con Docker Com
 
 ## Requisitos
 
-- Docker Desktop con Docker Compose v2.
+- Docker con Docker Compose v2 (Docker Desktop en Windows).
 - Una copia local de `.env` basada en `.env.example`.
 
-En PowerShell, desde la raíz del repositorio:
+Desde la raíz del repositorio, creá `.env` una sola vez.
+
+**Linux (Terminal):**
+
+```bash
+cp .env.example .env
+```
+
+**Windows (PowerShell):**
 
 ```powershell
 Copy-Item .env.example .env
@@ -30,11 +38,19 @@ El código de Odoo y sus addons Community incluidos en la imagen no se copian a 
 
 ## Inicio
 
-> **Atención:** en el `docker-compose.yml` actual, `web.restart` está escrito como una lista (`- always`). Compose espera un valor escalar, por ejemplo `restart: always`; por eso el archivo puede ser rechazado antes de iniciar. Este README no modifica la configuración de despliegue. Una vez corregida esa validación en el archivo de Compose, los comandos previstos son:
+Primero, creá `.env` si todavía no existe (ver **Requisitos**) y editá el archivo para definir tus credenciales. Después, desde la raíz del repositorio:
+
+**Linux (Terminal):**
+
+```bash
+docker compose up -d --build
+docker compose ps
+docker compose logs -f web
+```
+
+**Windows (PowerShell):**
 
 ```powershell
-Copy-Item .env.example .env  # solo la primera vez
-# Editar .env antes de continuar
 docker compose up -d --build
 docker compose ps
 docker compose logs -f web
@@ -43,6 +59,14 @@ docker compose logs -f web
 La aplicación se publica en `http://localhost:<PORT>`; con el valor de ejemplo de `.env.example`, el puerto es `8069`. En la primera apertura, seleccioná o creá la base de datos de Odoo desde el asistente. `POSTGRES_DB` configura PostgreSQL; no es necesariamente el nombre de la base de datos de Odoo que se crea en el asistente.
 
 Para detener los servicios sin borrar los datos:
+
+**Linux (Terminal):**
+
+```bash
+docker compose down
+```
+
+**Windows (PowerShell):**
 
 ```powershell
 docker compose down
@@ -63,28 +87,93 @@ Para usar cualquiera de esos módulos se necesita acceso y licencia al código E
 
 ## Instalar o actualizar un módulo
 
-### Desde la interfaz web
+### Agregar e instalar un módulo por primera vez
 
-1. Colocá el código del módulo y sus dependencias en un directorio descubierto por `addons_path`.
-2. Reiniciá el servicio web para que vuelva a leer el código:
+Un módulo de Odoo es una carpeta con archivos de código y configuración. El archivo que permite reconocerla es `__manifest__.py`. En este proyecto, Odoo busca módulos adicionales dentro de `addons/`, que en el contenedor corresponde a `/mnt/extra-addons`.
+
+**Importante:** no se puede subir un ZIP ni copiar el código del addon desde el portal web de Odoo. Primero hay que poner la carpeta del módulo en `addons/` siguiendo los pasos 1 a 5 de abajo. Después, desde el portal web, se actualiza la lista de aplicaciones y se instala el módulo con los pasos 6 y 7.
+
+1. **Conseguí el módulo correcto.** Descargalo desde la página oficial del proveedor o desde el repositorio del autor. Comprobá que sea para Odoo 19 y para la edición que usás (Community o Enterprise). Si descargás un ZIP, extraelo primero; Odoo no instala el ZIP directamente. Para módulos OCA, usá la rama `19.0`.
+2. **Buscá la carpeta del módulo.** Abrí lo que descargaste y localizá la carpeta que contiene `__manifest__.py`. Esa carpeta es el módulo. Si el módulo requiere otros addons, conseguí también esas dependencias: el nombre suele aparecer en el manifiesto, en la documentación del módulo o en las instrucciones del proveedor.
+3. **Copiá la carpeta a `addons/`.** Abrí una terminal en la raíz de este repositorio (la carpeta donde está `docker-compose.yml`). Reemplazá `nombre_tecnico` por el nombre real de la carpeta del módulo.
+
+   **Linux (Terminal):**
+
+   ```bash
+   cp -r "$HOME/Downloads/nombre_tecnico" "./addons/nombre_tecnico"
+   ```
+
+   **Windows (PowerShell):**
+
+   ```powershell
+   Copy-Item -Recurse "$env:USERPROFILE\Downloads\nombre_tecnico" ".\addons\nombre_tecnico"
+   ```
+
+   Repetí el comando de tu sistema para cada dependencia. Cada carpeta debe quedar directamente dentro de `addons/`, por ejemplo `addons/nombre_tecnico/__manifest__.py` (Linux) o `addons\nombre_tecnico\__manifest__.py` (Windows); no la dejes dentro de una carpeta adicional como `addons/repositorio/nombre_tecnico`.
+4. **Comprobá que la ruta quedó bien.**
+
+   **Linux (Terminal):** debe mostrar `Encontrado`:
+
+   ```bash
+   if test -f "./addons/nombre_tecnico/__manifest__.py"; then echo "Encontrado"; else echo "No encontrado"; fi
+   ```
+
+   **Windows (PowerShell):** debe mostrar `True`:
+
+   ```powershell
+   Test-Path ".\addons\nombre_tecnico\__manifest__.py"
+   ```
+
+   Si no se encuentra el archivo, revisá la carpeta que copiaste: probablemente copiaste la carpeta contenedora y el manifiesto quedó más adentro.
+5. **Reiniciá Odoo** para que detecte el código nuevo.
+
+   **Linux (Terminal):**
+
+   ```bash
+   docker compose restart web
+   ```
+
+   **Windows (PowerShell):**
 
    ```powershell
    docker compose restart web
    ```
 
-3. En Odoo, activá el modo desarrollador y abrí **Aplicaciones → Actualizar lista de aplicaciones**.
-4. Buscá el módulo por su nombre técnico y elegí **Activar/Instalar**. Si no aparece, verificá la versión, el manifiesto, las dependencias, el montaje y que el módulo esté disponible para la edición instalada.
+6. **Actualizá el catálogo desde el portal web.** Abrí `http://localhost:8069` (o el puerto configurado en `PORT`), iniciá sesión y entrá a la base de datos. Activá el modo desarrollador desde **Ajustes**. Después abrí **Aplicaciones → Actualizar lista de aplicaciones** y confirmá si Odoo lo solicita.
+7. **Instalá el módulo desde el portal web.** En **Aplicaciones**, buscá el nombre técnico del módulo y elegí **Activar/Instalar**. Ese nombre suele coincidir con el de la carpeta, aunque el nombre visible puede ser distinto.
+
+Si no aparece, revisá que el manifiesto esté en la ruta indicada, que reiniciaste el servicio, que actualizaste la lista, y que el módulo y todas sus dependencias sean compatibles con la versión y edición instaladas. La actualización de la lista solo vuelve a buscar código que ya está disponible; no descarga ni instala módulos por sí sola.
+
+### Actualizar un módulo ya instalado desde la interfaz web
+
+1. Reemplazá la carpeta del módulo en `addons/` por la nueva versión compatible, conservando el mismo nombre técnico.
+2. Reiniciá el servicio:
+
+   **Linux (Terminal):** `docker compose restart web`
+
+   **Windows (PowerShell):** `docker compose restart web`
+3. En Odoo, activá el modo desarrollador y actualizá la lista de aplicaciones.
+4. Abrí el módulo y elegí **Actualizar**. Esto aplica los cambios del módulo a la base de datos; reiniciar el contenedor por sí solo no lo actualiza.
 
 La actualización de la lista solo vuelve a escanear addons disponibles; no descarga módulos ni instala código que no esté en el contenedor.
 
 ### Desde la CLI de Odoo
 
-Usá el nombre de la base de datos de Odoo, no necesariamente el valor `POSTGRES_DB`. Detené primero el servidor web para evitar ejecutar una instalación simultánea sobre la misma base:
+Usá el nombre de la base de datos de Odoo, no necesariamente el valor `POSTGRES_DB`. Detené primero el servidor web para evitar ejecutar una instalación simultánea sobre la misma base. Reemplazá `nombre_de_la_base_de_odoo` y `nombre_tecnico` por los nombres reales.
+
+**Linux (Terminal):**
+
+```bash
+docker compose stop web
+docker compose run --rm web odoo -c /etc/odoo/odoo.conf -d nombre_de_la_base_de_odoo -i nombre_tecnico --stop-after-init
+docker compose start web
+```
+
+**Windows (PowerShell):**
 
 ```powershell
-$env:ODOO_DB = "nombre_de_la_base_de_odoo"
 docker compose stop web
-docker compose run --rm web odoo -c /etc/odoo/odoo.conf -d $env:ODOO_DB -i nombre_tecnico --stop-after-init
+docker compose run --rm web odoo -c /etc/odoo/odoo.conf -d nombre_de_la_base_de_odoo -i nombre_tecnico --stop-after-init
 docker compose start web
 ```
 
